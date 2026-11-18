@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kiểm tra camera iOS – Marker 2</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100svh; background: #132d28; color: white; font-family: system-ui, sans-serif; padding: 22px; }
+  main { max-width: 540px; margin: auto; }
+  h1 { font-size: 23px; }
+  p { line-height: 1.5; color: #d9e9df; }
+  button { padding: 14px 16px; font-weight: 700; border: 0; border-radius: 12px; background:#90eed2; color:#10392c; font-size: 16px; width: 100%; }
+  video { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; background: #000; border-radius: 14px; display:block; margin: 20px 0 10px; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; border-radius: 12px; background: #1f4239; line-height: 1.5; font-size: 13px; }
+  a { color: #98f4e0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Kiểm tra camera trên iPhone</h1>
+  <p>Trang này kiểm tra quyền camera bằng JavaScript thuần, <strong>không sử dụng AR.js hoặc A-Frame</strong>. Hãy mở trực tiếp bằng Safari trên HTTPS.</p>
+  <button id="start" type="button">Bật camera sau</button>
+  <video id="preview" playsinline webkit-playsinline autoplay muted></video>
+  <pre id="status">Chưa bắt đầu.</pre>
+  <p><a href="./">Quay lại Marker 2</a></p>
+</main>
+<script>
+(function(){
+  const btn = document.getElementById('start');
+  const video = document.getElementById('preview');
+  const status = document.getElementById('status');
+  function show(msg) { status.textContent = msg; }
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    show('Đang yêu cầu quyền camera…');
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Trình duyệt không hỗ trợ getUserMedia hoặc trang không dùng HTTPS.');
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+      video.srcObject = stream;
+      video.muted = true;
+      video.playsInline = true;
+      await video.play();
+      const track = stream.getVideoTracks()[0];
+      show('Đã mở camera!\nTrack: ' + track.readyState + '\nĐang chờ khung hình…');
+      video.addEventListener('loadedmetadata', () => show('Đã mở camera!\nTrack: ' + track.readyState + '\nVideo: ' + video.videoWidth + ' × ' + video.videoHeight), { once: true });
+      setTimeout(() => show('Track: ' + track.readyState + '\nVideo: ' + video.videoWidth + ' × ' + video.videoHeight + '\nCó thấy hình camera không?'), 1500);
+    } catch (err) {
+      show('KHÔNG MỞ ĐƯỢC: ' + (err.name || 'Error') + '\n' + err.message);
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -50,3 +50,10 @@ MARKER 2 - WEB AR | LAU CHUONG / LAU TRONG
    - Doi lai model Blender thi can kiem thu hotspot tren thiet bi that.
    - File HTML can mang Internet de tai A-Frame va AR.js tu CDN.
    - AR camera/marker chua duoc kiem thu truc tiep tren dien thoai trong goi mau nay.
+
+7. IOS / SAFARI
+   - index.html da them videoTexture:true va renderer alpha:true.
+   - Mo bang Safari, khong mo trong Zalo/Facebook.
+   - Thu /camera-test.html de biet getUserMedia tren iPhone co hoat dong khong.
+   - Neu camera-test hoat dong nhung Web AR khong hien camera, kiem tra AR.js / WebGL.
+   - Moi lan doi code: git add . ; git commit -m "Sua camera iOS" ; git push.
