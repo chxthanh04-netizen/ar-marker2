@@ -13,6 +13,8 @@
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
     body { background: #10231f; touch-action: manipulation; }
     a-scene { position: fixed !important; inset: 0; width: 100%; height: 100%; }
+    /* Giữ tỷ lệ khung hình của luồng camera; không ép video thành tỷ lệ màn hình. */
+    video#arjs-video { object-fit: cover; }
     /* Lớp giao diện phía trên hình camera. */
     .ui { position: fixed; z-index: 20; inset: 0; pointer-events: none; color: white; }
     .topbar { position: absolute; top: max(15px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
@@ -52,7 +54,7 @@
   <a-scene id="arScene" embedded
            vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false"
            renderer="logarithmicDepthBuffer: true; colorManagement: true; alpha: true; antialias: true"
-           arjs="sourceType: webcam; trackingMethod: best; videoTexture: true; debugUIEnabled: false;">
+           arjs="sourceType: webcam; trackingMethod: best; videoTexture: false; debugUIEnabled: false;">
     <a-light type="ambient" intensity="1.15"></a-light>
     <a-light type="directional" intensity="0.9" position="1 3 2"></a-light>
     <!-- Đang dùng Hiro để thử. Khi có marker riêng, đổi sang:
@@ -108,7 +110,7 @@
   const CONFIG = {
     // true: dựng các khối demo bằng Three.js, dùng ngay khi chưa có .glb.
     // false: dùng ba tệp .glb có tên bên dưới. Lỗi tải sẽ hiện mô hình demo thay thế.
-    demoModels: true,
+    demoModels: false,
     modelPaths: {
       tower: 'assets/lau-chuong-trong.glb',
       roof: 'assets/mai-dao.glb',
