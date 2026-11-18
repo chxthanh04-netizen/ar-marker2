@@ -4,17 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#11231f" />
-  <title>Marker 2 | Lầu chuông – Lầu trống</title>
-  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+  <title>Marker 2 | Lầu chuông – Lầu trống (đã sửa)</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js"></script>
   <style>
     :root { --ink: #152820; --pine: #1e594a; --mint: #88e5c5; --cream: #fffdf5; }
     * { box-sizing: border-box; }
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
     body { background: #10231f; touch-action: manipulation; }
     a-scene { position: fixed !important; inset: 0; width: 100%; height: 100%; }
-    /* Giữ tỷ lệ khung hình của luồng camera; không ép video thành tỷ lệ màn hình. */
-    video#arjs-video { object-fit: cover; }
+    /* Không ép object-fit / width / height lên video: để AR.js đồng bộ video và khung 3D. */
     /* Lớp giao diện phía trên hình camera. */
     .ui { position: fixed; z-index: 20; inset: 0; pointer-events: none; color: white; }
     .topbar { position: absolute; top: max(15px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
@@ -27,6 +26,9 @@
     .center-hint { position: absolute; top: 43%; width: min(310px, calc(100% - 42px)); left: 50%; transform: translate(-50%,-50%); padding: 16px 20px; text-align: center; background: rgba(13,33,28,.86); border: 1px solid rgba(255,255,255,.20); border-radius: 18px; box-shadow: 0 12px 50px rgba(0,0,0,.22); }
     .center-hint strong { font-size: 15px; display: block; }
     .center-hint span { font-size: 12px; color: #d0ded6; display: block; line-height: 1.55; margin-top: 6px; }
+    .center-hint { pointer-events: auto; }
+    .camera-start { margin-top: 13px; width: 100%; padding: 11px 12px; border-radius: 11px; border: 1px solid #9befd3; background: #2b8166; color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+    .model-notice { color: #9c2c21; background: #fff0eb; border: 1px solid #f3b1a7; padding: 8px 10px; margin: 9px 0; font-size: 12px; line-height: 1.4; border-radius: 10px; }
     .hotspot { pointer-events: auto; touch-action: manipulation; cursor: pointer; position: fixed; width: 52px; height: 52px; transform: translate(-50%, -50%); padding: 0; border: 0; background: transparent; z-index: 26; display: none; }
     .hotspot .pulse { position: absolute; border-radius: 100%; border: 2px solid rgba(110,253,225,.85); inset: 8px; animation: pulse 2.0s ease-out infinite; }
     .hotspot .pulse:nth-child(2) { animation-delay: .75s; }
@@ -60,10 +62,9 @@
     <!-- Đang dùng Hiro để thử. Khi có marker riêng, đổi sang:
          <a-marker id="marker2" type="pattern" url="assets/marker2.patt" emitevents="true"> -->
     <a-marker id="marker2" preset="hiro" emitevents="true" smooth="true" smooth-count="5" smooth-tolerance="0.01" smooth-threshold="2">
-      <!-- Cấp 1: cùng một mô hình 3D dùng cho 2 lầu vì kiến trúc giống nhau. -->
+      <!-- Cấp 1: chỉ MỘT mô hình, căn giữa marker. -->
       <a-entity id="level0">
-        <a-entity id="towerA" position="-0.34 0 0"></a-entity>
-        <a-entity id="towerB" position="0.34 0 0"></a-entity>
+        <a-entity id="tower3d" position="0 0 0"></a-entity>
       </a-entity>
       <!-- Cấp 2: mô hình riêng cho kiến trúc mái đao. -->
       <a-entity id="level1" visible="false">
@@ -84,7 +85,8 @@
     </div>
     <div id="hint" class="center-hint" role="status">
       <strong>Hướng camera vào marker 02</strong>
-      <span>Dùng mẫu Hiro để thử. Đặt marker trên mặt phẳng, đủ sáng và giữ điện thoại ổn định.</span>
+      <span id="cameraHintText">Dùng mẫu Hiro để thử. Đặt marker trên mặt phẳng, đủ sáng và giữ điện thoại ổn định.</span>
+      <button id="cameraStart" class="camera-start" type="button" hidden>Bật camera trên iPhone</button>
     </div>
     <button id="hotspot" class="hotspot" type="button" aria-label="Khám phá chi tiết">
       <span class="pulse"></span><span class="pulse"></span><span class="core"></span>
@@ -94,6 +96,7 @@
       <div class="panel-top"><span id="step" class="step">Cấp 1 / 3</span><span id="demoTag" class="demo-tag">Mô hình minh họa</span></div>
       <h1 id="heading">Lầu chuông – Lầu trống</h1>
       <p id="copy" class="body-copy"></p>
+      <div id="modelNotice" class="model-notice" hidden></div>
       <div id="tip" class="tip"></div>
       <div class="actions">
         <button id="back" type="button" class="act secondary" hidden>← Trở về</button>
@@ -109,8 +112,9 @@
   // =============== 1. CẤU HÌNH DỄ CHỈNH SỬA ===============
   const CONFIG = {
     // true: dựng các khối demo bằng Three.js, dùng ngay khi chưa có .glb.
-    // false: dùng ba tệp .glb có tên bên dưới. Lỗi tải sẽ hiện mô hình demo thay thế.
+    // false: dùng GLB thật. Lỗi tải sẽ BÁO LỖI, không giả vờ tải được bằng mô hình demo.
     demoModels: false,
+    fallbackToDemoOnError: false,
     modelPaths: {
       tower: 'assets/lau-chuong-trong.glb',
       roof: 'assets/mai-dao.glb',
@@ -156,6 +160,9 @@
   let tracking = false;
   let warning = false;
   let ready = false;
+  const missingModels = [];
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const THREE = AFRAME.THREE;
   const hotPoint = new THREE.Vector3();
   const projected = new THREE.Vector3();
@@ -178,7 +185,12 @@
     $('hint').hidden = tracking;
     $('status').classList.toggle('found', tracking);
     $('statusText').textContent = tracking ? 'Đã nhận diện' : 'Đang tìm marker';
-    $('demoTag').textContent = (CONFIG.demoModels || warning) ? 'Mô hình minh họa' : 'Mô hình 3D';
+    $('demoTag').textContent = CONFIG.demoModels ? 'Mô hình minh họa'
+      : warning ? 'Kiểm tra tệp 3D' : 'Mô hình 3D';
+    $('modelNotice').hidden = missingModels.length === 0;
+    $('modelNotice').textContent = missingModels.length
+      ? `Không tải được ${missingModels.join(', ')}. Hãy kiểm tra đường dẫn và tên tệp trong assets/.`
+      : '';
     if (level === 2 || !tracking) $('hotspot').style.display = 'none';
   }
 
@@ -197,28 +209,71 @@
   window.addEventListener('camera-error', () => {
     $('hint').hidden = false;
     $('hint').querySelector('strong').textContent = 'Không mở được camera';
-    $('hint').querySelector('span').textContent = 'Hãy dùng HTTPS hoặc localhost và cho phép trình duyệt sử dụng camera.';
+    showCameraAssistance('Hãy dùng đường dẫn HTTPS, cấp quyền camera trong Safari/Chrome và mở link bằng trình duyệt ngoài, không phải ứng dụng nhúng.');
   });
 
 
   // =============== TƯƠNG THÍCH CAMERA iOS / SAFARI ===============
-  // AR.js tạo phần tử video động. Safari cần phát video trực tiếp trong trang.
+  // AR.js tự mở getUserMedia; ta KHÔNG mở thêm stream (tránh tranh camera).
+  // Safari đôi khi cần một lần video.play() xuất phát trực tiếp từ thao tác chạm.
+  function getARVideo() {
+    return document.getElementById('arjs-video') || document.querySelector('video');
+  }
   function prepareCameraVideo() {
-    const video = document.querySelector('video');
-    if (!video) return;
+    const video = getARVideo();
+    if (!video) return false;
     video.setAttribute('playsinline', '');
     video.setAttribute('webkit-playsinline', '');
     video.setAttribute('autoplay', '');
     video.setAttribute('muted', '');
     video.playsInline = true;
+    video.defaultMuted = true;
     video.muted = true;
-    console.info('[Marker2] Camera video ready:',
-      {width: video.videoWidth, height: video.videoHeight, paused: video.paused});
+    return true;
   }
+  function showCameraAssistance(message) {
+    if (tracking) return;
+    $('hint').hidden = false;
+    $('cameraHintText').textContent = message;
+    $('cameraStart').hidden = !isIOS;
+  }
+  const cameraObserver = new MutationObserver(() => {
+    if (prepareCameraVideo()) cameraObserver.disconnect();
+  });
+  cameraObserver.observe(document.documentElement, {childList: true, subtree: true});
   window.addEventListener('arjs-video-loaded', prepareCameraVideo);
   document.addEventListener('arjs-video-loaded', prepareCameraVideo);
-  // Kiểm tra lại vì một số phiên bản AR.js không phát sự kiện trên window.
-  window.addEventListener('load', () => setTimeout(prepareCameraVideo, 500));
+  window.addEventListener('load', prepareCameraVideo);
+  // Nếu Safari không tự phát luồng hình, cung cấp nút phát do người dùng bấm.
+  if (isIOS) {
+    setTimeout(() => {
+      const video = getARVideo();
+      if (!tracking && (!video || video.paused || video.readyState < 2)) {
+        showCameraAssistance('Nếu hình camera chưa xuất hiện, hãy nhấn Bật camera. Mở liên kết trực tiếp bằng Safari (không mở trong Zalo/Facebook) và cấp quyền camera.');
+      }
+    }, 3500);
+  }
+  $('cameraStart').addEventListener('click', () => {
+    prepareCameraVideo();
+    const video = getARVideo();
+    if (!video) {
+      showCameraAssistance('Chưa nhận được luồng camera từ AR.js. Kiểm tra quyền camera trong Safari rồi tải lại trang.');
+      return;
+    }
+    const playResult = video.play();
+    if (playResult && typeof playResult.then === 'function') {
+      playResult.then(() => {
+        $('cameraStart').hidden = true;
+        $('cameraHintText').textContent = 'Camera đã phát. Hãy hướng máy về marker Hiro.';
+      }).catch(err => {
+        console.warn('[Marker2] Safari video.play bị chặn:', err);
+        showCameraAssistance('Không thể phát camera. Hãy bật quyền Camera cho Safari, mở link HTTPS trực tiếp và tải lại trang.');
+      });
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) prepareCameraVideo();
+  });
 
   // =============== 3. VẼ MÔ HÌNH MINH HỌA KHI CHƯA CÓ GLB ===============
   function material(color, extra = {}) {
@@ -307,19 +362,30 @@
     return g;
   }
 
-  // Chuẩn hóa kích thước: tránh mỗi file Blender có tỷ lệ khác nhau.
+  // Chuẩn hóa theo bounding box và dùng CHỈ MỘT hệ số scale cho X/Y/Z.
+  // Giữ nguyên tỷ lệ và mọi mesh/transform của Blender trong file GLB.
   function fitModel(obj, maxWidth, maxHeight) {
-    const copy = obj.clone(true); // tính bounding box độc lập khỏi marker AR
-    copy.updateMatrixWorld(true);
-    const bounds = new THREE.Box3().setFromObject(copy);
+    const sample = obj.clone(true);
+    sample.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(sample);
     const size = new THREE.Vector3(); bounds.getSize(size);
-    if (!Number.isFinite(size.x) || size.length() < 0.00001) return;
-    const factor = Math.min(maxWidth / Math.max(size.x,size.z,.0001), maxHeight/Math.max(size.y,.0001));
-    const cx = (bounds.min.x+bounds.max.x)/2;
-    const cz = (bounds.min.z+bounds.max.z)/2;
-    const p = obj.position.clone();
-    obj.scale.multiplyScalar(factor);
-    obj.position.set((p.x-cx)*factor,(p.y-bounds.min.y)*factor,(p.z-cz)*factor);
+    if (!Number.isFinite(size.x) || !Number.isFinite(size.y) || !Number.isFinite(size.z)
+        || size.length() < 0.00001) {
+      console.warn('[Marker2] Không xác định được kích thước GLB');
+      return;
+    }
+    const horizontal = Math.max(size.x, size.z, 0.0001);
+    const factor = Math.min(maxWidth / horizontal, maxHeight / Math.max(size.y, 0.0001));
+    const oldPosition = obj.position.clone();
+    const centerX = (bounds.min.x + bounds.max.x) / 2;
+    const centerZ = (bounds.min.z + bounds.max.z) / 2;
+    obj.scale.multiplyScalar(factor); // KHÔNG scale riêng từng trục
+    obj.position.set(
+      (oldPosition.x - centerX) * factor,
+      (oldPosition.y - bounds.min.y) * factor,
+      (oldPosition.z - centerZ) * factor
+    );
+    console.info('[Marker2] Tỷ lệ gốc:', size.toArray(), 'Hệ số đồng đều:', factor);
   }
 
   function setDemo(el, create, maxWidth, maxHeight) {
@@ -333,11 +399,14 @@
       const mesh = el.getObject3D('mesh');
       if(mesh) fitModel(mesh,maxWidth,maxHeight);
     },{once:true});
-    el.addEventListener('model-error', () => {
+    el.addEventListener('model-error', (event) => {
       warning = true;
-      console.warn('Không tải được:',path,'— dùng mô hình minh họa.');
-      el.removeAttribute('gltf-model');
-      setDemo(el,create,maxWidth,maxHeight);
+      missingModels.push(path);
+      console.error('[Marker2] Không tải được GLB:', path, event.detail);
+      if (CONFIG.fallbackToDemoOnError) {
+        el.removeAttribute('gltf-model');
+        setDemo(el, create, maxWidth, maxHeight);
+      }
       updateUI();
     },{once:true});
     el.setAttribute('gltf-model',`url(${path})`);
@@ -348,7 +417,7 @@
     if (!ready || !tracking || level===2 || !scene.camera) {
       $('hotspot').style.display='none'; return;
     }
-    const el = level===0 ? $('towerA') : $('roof3d');
+    const el = level===0 ? $('tower3d') : $('roof3d');
     if (!el.getObject3D('mesh')) { $('hotspot').style.display='none'; return; }
     marker.object3D.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(el.object3D);
@@ -371,8 +440,8 @@
   function init() {
     if(ready) return;
     ready=true;
-    loadModel($('towerA'),CONFIG.modelPaths.tower,()=>demoTower('bell'),.48,.59);
-    loadModel($('towerB'),CONFIG.modelPaths.tower,()=>demoTower('drum'),.48,.59);
+    // Dùng một mô hình lầu duy nhất, hiển thị ở chính giữa marker.
+    loadModel($('tower3d'), CONFIG.modelPaths.tower, () => demoTower('bell'), .90, .90);
     loadModel($('roof3d'),CONFIG.modelPaths.roof,demoRoof,1.02,.61);
     loadModel($('tile3d'),CONFIG.modelPaths.tile,demoTile,.53,.66);
     updateUI();
